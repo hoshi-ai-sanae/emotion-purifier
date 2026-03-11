@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>感情浄化 - Emotion Purifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kiwi Maru', serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* 紙の質感 */
+        .paper-texture {
+            background-color: #fcfbf9;
+            background-image: repeating-linear-gradient(transparent, transparent 39px, #e2e8f0 39px, #e2e8f0 40px);
+            line-height: 40px;
+            padding-top: 40px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        textarea:focus { outline: none; }
+
+        /* アニメーション定義 */
+        @keyframes burnPaper {
+            0% { transform: scale(1); filter: brightness(1); }
+            100% { background-color: #111; color: transparent; opacity: 0; filter: blur(5px); transform: scale(0.8) translateY(-50px); }
+        }
+        .anim-fire { animation: burnPaper 3s ease-in forwards; position: relative; }
+
+        @keyframes sinkWater {
+            0% { transform: translateY(0) scale(1); filter: blur(0); }
+            100% { transform: translateY(100px) scale(0.8); filter: blur(15px); opacity: 0; }
+        }
+        .anim-water { animation: sinkWater 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+
+        @keyframes buryEarth {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(40px); opacity: 0; }
+        }
+        .anim-earth { animation: buryEarth 3s ease-in-out forwards; }
+
+        @keyframes popSprout {
+            0% { transform: scale(0) translateY(20px); opacity: 0; }
+            50% { transform: scale(1.2) translateY(-10px); opacity: 1; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .sprout-anim { animation: popSprout 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        .particle { position: absolute; pointer-events: none; z-index: 50; }
+    </style>
+</head>
+<body id="app-bg" class="bg-stone-50 transition-colors duration-[2000ms] min-h-screen flex flex-col items-center justify-center relative text-gray-700">
+
+    <!-- エフェクト用レイヤー -->
+    <div id="bg-effect-layer" class="absolute inset-0 pointer-events-none overflow-hidden z-40"></div>
+
+    <!-- 浄化中の説明テキスト -->
+    <div id="anim-description" class="hidden absolute top-[10%] md:top-[15%] left-1/2 -translate-x-1/2 text-center text-lg md:text-xl font-medium opacity-0 transition-opacity duration-1000 z-50 tracking-widest w-full px-4 leading-relaxed">
+    </div>
+
+    <!-- Phase 0: 導入 -->
+    <div id="phase0-intro" class="absolute inset-0 flex flex-col items-center justify-center z-30 px-6 transition-opacity duration-1000 bg-stone-50">
+        <div class="text-center max-w-md bg-white/40 backdrop-blur-md p-8 md:p-10 rounded-2xl shadow-sm border border-white/50">
+            <h1 class="text-2xl md:text-3xl font-medium text-gray-700 mb-6 tracking-widest">感情浄化</h1>
+            <p class="text-gray-600 leading-relaxed mb-8 text-sm md:text-base">
+                心の中に溜まったモヤモヤ、イライラ、悲しみ。<br>
+                言葉にして吐き出し、そして手放してみませんか？<br>
+                <br>
+                誰にも見られることはありません。<br>
+                安心して、今の気持ちをすべて書き出してみてください。
+            </p>
+            <button id="btn-start" class="px-8 py-3 bg-white hover:bg-gray-50 text-gray-700 rounded-full shadow-sm border border-gray-200 tracking-wide font-medium transition-all active:scale-95">
+                浄化をはじめる
+            </button>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div id="main-container" class="z-10 w-full max-w-lg px-6 flex flex-col items-center relative hidden opacity-0 transition-opacity duration-1000">
+        
+        <div id="paper-wrapper" class="w-full relative transition-all duration-700">
+            <textarea id="emotion-input" 
+                class="w-full h-64 md:h-80 rounded-sm paper-texture text-gray-700 text-lg p-6 resize-none transition-all duration-500"
+                placeholder="今の気持ちをすべて書き出してみてください..."></textarea>
+            <div id="dirt-overlay" class="absolute bottom-0 left-0 w-full h-0 bg-[#8b5a2b] rounded-sm opacity-0 transition-all duration-[3000ms] pointer-events-none" style="z-index: 20;"></div>
+        </div>
+
+        <!-- アクション選択 -->
+        <div id="phase1-controls" class="mt-8 transition-opacity duration-500">
+            <button id="btn-finish" class="px-8 py-3 bg-white/80 hover:bg-white text-gray-600 rounded-full shadow-sm border border-gray-200 transition-all">
+                書き終わった
+            </button>
+        </div>
+
+        <div id="phase2-controls" class="mt-8 hidden flex-wrap justify-center gap-4 transition-all duration-500 opacity-0 translate-y-4">
+            <p class="w-full text-center text-gray-500 mb-2 text-sm">どのように手放しますか？</p>
+            <button class="action-btn px-5 py-3 bg-red-50 text-red-700 rounded-lg shadow-sm border border-red-100 flex items-center gap-2" data-action="fire">🔥 火で燃やす</button>
+            <button class="action-btn px-5 py-3 bg-green-50 text-green-700 rounded-lg shadow-sm border-green-100 flex items-center gap-2" data-action="wind">🍃 風に飛ばす</button>
+            <button class="action-btn px-5 py-3 bg-blue-50 text-blue-700 rounded-lg shadow-sm border-blue-100 flex items-center gap-2" data-action="water">💧 水に沈める</button>
+            <button class="action-btn px-5 py-3 bg-amber-50 text-amber-800 rounded-lg shadow-sm border-amber-100 flex items-center gap-2" data-action="earth">🌱 土に埋める</button>
+        </div>
+
+        <!-- 完了メッセージエリア -->
+        <div id="phase4-completion" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-center hidden opacity-0 flex-col items-center justify-center z-50">
+            <div class="bg-white/70 backdrop-blur-md p-8 rounded-2xl shadow-sm border border-white/50 w-full max-w-md mx-auto">
+                
+                <div id="ai-message-container" class="w-full flex flex-col items-center transition-opacity duration-500">
+                    <p id="healing-message-text" class="text-gray-700 text-lg md:text-xl leading-relaxed mb-6"></p>
+
+                    <div id="sprout-container" class="hidden flex-col items-center opacity-0 transition-all duration-1000 mb-4">
+                        <div class="text-6xl mb-4 sprout-anim">🌱</div>
+                        <p class="text-gray-600 font-medium leading-relaxed">感情を手放したら、ここから一歩踏み出そう。</p>
+                    </div>
+
+                    <button id="btn-next" class="px-6 py-2 text-sm text-gray-500 hover:text-gray-800 border-b border-gray-300 hidden mt-4 transition-all">次に進む</button>
+                </div>
+
+                <div id="final-message-container" class="w-full hidden flex-col items-center transition-opacity duration-500">
+                    <p class="text-gray-700 text-lg md:text-xl leading-relaxed mb-6">
+                        終わったらスッキリしたね。<br>
+                        もうこんな感情とはサヨナラ。<br><br>
+                        いつでもここに戻ってきてね。<br>一緒に浄化しよう。
+                    </p>
+                    <button id="btn-reset" class="px-6 py-2 text-sm text-gray-500 border-b border-gray-300">最初に戻る</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const appBg = document.getElementById('app-bg');
+        const mainContainer = document.getElementById('main-container');
+        const phase0Intro = document.getElementById('phase0-intro');
+        const emotionInput = document.getElementById('emotion-input');
+        const paperWrapper = document.getElementById('paper-wrapper');
+        const phase1Controls = document.getElementById('phase1-controls');
+        const phase2Controls = document.getElementById('phase2-controls');
+        const actionBtns = document.querySelectorAll('.action-btn');
+        const phase4Completion = document.getElementById('phase4-completion');
+        const healingMessageText = document.getElementById('healing-message-text');
+        const sproutContainer = document.getElementById('sprout-container');
+        const animDescription = document.getElementById('anim-description');
+        const bgEffectLayer = document.getElementById('bg-effect-layer');
+
+        // 癒やしメッセージのライブラリ
+        const messages = [
+            "あなたの想い、しっかりと受け止めました。もう無理に抱え込まなくて大丈夫ですよ。心の中の重荷が、少しずつ軽くなっていくのを感じてみてください。",
+            "今まで本当によく頑張ってきましたね。その痛みや苦しみは、あなたが一生懸命生きてきた証です。今はただ、ゆっくりと心を休めてあげましょう。",
+            "言葉にして吐き出すことで、心に新しい隙間ができました。その隙間には、これからきっと穏やかな光が差し込んでくるはずです。",
+            "自分を責める必要はありません。どんな感情も、あなたの大切な一部です。でも、もう不要になったものは、こうして手放していいのですよ。",
+            "深い呼吸をしてみてください。吐き出す息と一緒に、最後のもやもやも消えていきます。あなたは自由で、とても清らかな存在です。",
+            "大丈夫。嵐のあとに虹がかかるように、あなたの心にも必ず穏やかな時間が訪れます。今日は自分をたくさん褒めてあげてくださいね。",
+            "この浄化が、あなたの新しい一歩のきっかけになりますように。あなたは一人ではありません。いつでもここで、あなたの心に寄り添っています。"
+        ];
+
+        // 画面遷移：開始
+        document.getElementById('btn-start').onclick = () => {
+            phase0Intro.style.opacity = '0';
+            setTimeout(() => {
+                phase0Intro.classList.add('hidden');
+                mainContainer.classList.remove('hidden');
+                setTimeout(() => mainContainer.classList.remove('opacity-0'), 50);
+                emotionInput.focus();
+            }, 1000);
+        };
+
+        // 書き終わり
+        document.getElementById('btn-finish').onclick = () => {
+            if (!emotionInput.value.trim()) return;
+            emotionInput.readOnly = true;
+            phase1Controls.style.opacity = '0';
+            setTimeout(() => {
+                phase1Controls.classList.add('hidden');
+                phase2Controls.classList.remove('hidden');
+                setTimeout(() => {
+                    phase2Controls.classList.remove('opacity-0', 'translate-y-4');
+                }, 50);
+            }, 500);
+        };
+
+        // アクション実行
+        actionBtns.forEach(btn => {
+            btn.onclick = () => {
+                const action = btn.dataset.action;
+                phase2Controls.style.opacity = '0';
+                setTimeout(() => phase2Controls.classList.add('hidden'), 500);
+
+                if (action === 'fire') animateFire();
+                else if (action === 'wind') animateWind();
+                else if (action === 'water') animateWater();
+                else if (action === 'earth') animateEarth();
+            };
+        });
+
+        function showDesc(text, cls) {
+            animDescription.innerHTML = text;
+            animDescription.className = `absolute top-[15%] left-1/2 -translate-x-1/2 text-center text-xl font-medium opacity-0 transition-opacity duration-1000 z-50 tracking-widest w-full ${cls}`;
+            animDescription.classList.remove('hidden');
+            setTimeout(() => animDescription.style.opacity = '1', 100);
+        }
+
+        async function showCompletion() {
+            setTimeout(() => {
+                paperWrapper.classList.add('hidden');
+                animDescription.style.opacity = '0';
+                phase4Completion.classList.remove('hidden');
+                phase4Completion.classList.add('flex');
+                
+                appBg.className = 'bg-teal-50 transition-colors duration-[2000ms] min-h-screen flex flex-col items-center justify-center relative text-gray-700';
+
+                // メッセージをランダム選択
+                healingMessageText.innerHTML = '<span class="animate-pulse">感情を読み取っています...</span>';
+                
+                setTimeout(() => {
+                    phase4Completion.style.opacity = '1';
+                    setTimeout(() => {
+                        const msg = messages[Math.floor(Math.random() * messages.length)];
+                        healingMessageText.innerHTML = `<span class="text-2xl mb-4 block text-teal-400">✨</span>${msg}`;
+                        
+                        // 芽を出す
+                        setTimeout(() => {
+                            sproutContainer.classList.remove('hidden');
+                            sproutContainer.classList.add('flex');
+                            setTimeout(() => {
+                                sproutContainer.style.opacity = '1';
+                                document.getElementById('btn-next').classList.remove('hidden');
+                            }, 50);
+                        }, 2000);
+                    }, 1500);
+                }, 100);
+            }, 1000);
+        }
+
+        // --- Animations ---
+        function animateFire() {
+            appBg.classList.replace('bg-stone-50', 'bg-red-950');
+            emotionInput.classList.add('anim-fire');
+            showDesc("あなたの感情を火で浄化<br>全部燃やして炭にします", "text-red-100");
+            for(let i=0; i<30; i++) createPart('fire');
+            setTimeout(showCompletion, 3000);
+        }
+
+        function animateWind() {
+            appBg.classList.replace('bg-stone-50', 'bg-sky-200');
+            showDesc("あなたの感情を風で浄化<br>びりびりに破いて吹き飛ばします", "text-sky-900");
+            emotionInput.style.opacity = '0';
+            for(let i=0; i<80; i++) createPart('wind');
+            setTimeout(showCompletion, 3000);
+        }
+
+        function animateWater() {
+            appBg.classList.replace('bg-stone-50', 'bg-cyan-900');
+            emotionInput.classList.add('anim-water');
+            showDesc("あなたの感情を水で浄化<br>水の底に沈めます", "text-cyan-100");
+            for(let i=0; i<20; i++) createPart('water');
+            setTimeout(showCompletion, 4000);
+        }
+
+        function animateEarth() {
+            appBg.classList.replace('bg-stone-50', 'bg-[#d7ccc8]');
+            emotionInput.classList.add('anim-earth');
+            const dirt = document.getElementById('dirt-overlay');
+            dirt.style.opacity = '1'; dirt.style.height = '110%';
+            showDesc("あなたの感情を土で浄化<br>深い地面に埋めてしまいます", "text-stone-800");
+            setTimeout(showCompletion, 4000);
+        }
+
+        function createPart(type) {
+            const el = document.createElement('div');
+            el.className = 'particle';
+            const rect = emotionInput.getBoundingClientRect();
+            if (type === 'fire') {
+                el.style.width = '6px'; el.style.height = '6px'; el.style.backgroundColor = '#ff5722';
+                el.style.left = (rect.left + Math.random() * rect.width) + 'px';
+                el.style.top = (rect.bottom) + 'px';
+                bgEffectLayer.appendChild(el);
+                setTimeout(() => {
+                    el.style.transition = 'all 2s ease-out';
+                    el.style.transform = `translateY(-300px) translateX(${Math.random()*100-50}px)`;
+                    el.style.opacity = '0';
+                }, 50);
+            } else if (type === 'wind') {
+                el.style.width = '30px'; el.style.height = '30px'; el.style.backgroundColor = '#fcfbf9';
+                el.style.clipPath = 'polygon(0% 0%, 100% 20%, 80% 100%, 10% 80%)';
+                el.style.left = (rect.left + Math.random() * rect.width) + 'px';
+                el.style.top = (rect.top + Math.random() * rect.height) + 'px';
+                el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))';
+                bgEffectLayer.appendChild(el);
+                setTimeout(() => {
+                    el.style.transition = `all ${Math.random()+1.5}s ease-in`;
+                    el.style.transform = `translate(${window.innerWidth}px, -300px) rotate(720deg)`;
+                    el.style.opacity = '0';
+                }, 50);
+            } else if (type === 'water') {
+                el.style.width = '10px'; el.style.height = '10px'; el.style.borderRadius = '50%';
+                el.style.border = '1px solid white';
+                el.style.left = (rect.left + Math.random() * rect.width) + 'px';
+                el.style.top = (rect.top + Math.random() * rect.height) + 'px';
+                bgEffectLayer.appendChild(el);
+                setTimeout(() => {
+                    el.style.transition = 'all 3s ease-out';
+                    el.style.transform = `translateY(-200px)`; el.style.opacity = '0';
+                }, 50);
+            }
+        }
+
+        document.getElementById('btn-next').onclick = () => {
+            document.getElementById('ai-message-container').classList.add('hidden');
+            const final = document.getElementById('final-message-container');
+            final.classList.remove('hidden'); final.classList.add('flex');
+        };
+
+        document.getElementById('btn-reset').onclick = () => location.reload();
+    </script>
+</body>
+</html>
